@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Newspaper Synthesizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+body {
+font-family: 'Inter', sans-serif;
+background: #191a1c;
+margin: 0;
+padding: 2rem 0;
+color: #fff;
+}
+
+.synth-header {
+text-align: center;
+padding: 30px 0 12px 0;
+user-select: none;
+}
+
+.synth-title {
+font-size: 2.2rem;
+font-weight: 900;
+background: linear-gradient(92deg, #fff 70%, #8ffeeb 105%);
+background-clip: text;
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+cursor: pointer;
+transition: transform 0.22s, background 0.4s;
+}
+
+.synth-title:hover {
+background: linear-gradient(120deg, #91fbff 22%, #fff 76%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+transform: scale(1.06);
+}
+
+.timestamp {
+color: #80849c;
+font-size: 0.95rem;
+margin-top: 10px;
+opacity: 0.56;
+}
+
+.centered {
+max-width: 1200px;
+margin: auto;
+}
+
+.event-grid {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 2rem;
+padding: 32px 20px;
+align-items: start;
+}
+
+@media (max-width: 900px) {
+.event-grid {
+grid-template-columns: 1fr;
+}
+}
+
+.event-card {
+background: radial-gradient(circle at 50% 50%, #232428 55%, #17181a 100%);
+border-radius: 18px;
+border: 1.5px solid #232428;
+box-shadow: 0 4.5px 36px #101014cc;
+padding: 1.7rem 2rem 1.3rem 2rem;
+display: flex;
+flex-direction: column;
+justify-content: flex-start;
+overflow: hidden;
+min-height: 280px; /* 🟢 Uniform height */
+transition: all 0.3s ease-in-out;
+}
+
+.event-card.expanded {
+min-height: unset; /* 🟢 Allow tall card on expand */
+}
+
+.event-card:hover {
+box-shadow: 0 9px 42px 0 #22252c80, 0 0 0 2px #00ffe733 inset;
+transform: scale(1.01) translateY(-2px);
+border-color: #00ffc7;
+}
+
+.source-tag-bar {
+display: flex;
+justify-content: flex-end;
+gap: 0.45em;
+margin-bottom: 0.6em;
+flex-wrap: wrap;
+}
+
+.source-chip {
+background: #282c34;
+color: #77ffec;
+border-radius: 12px;
+padding: 4px 12px;
+font-size: 0.93rem;
+font-weight: 600;
+text-decoration: none;
+transition: background 0.3s, color 0.3s;
+}
+
+.source-chip:hover {
+background: #404650;
+color: #fff;
+}
+
+.event-title {
+font-size: 1.2rem;
+font-weight: 600;
+margin-bottom: 0.4rem;
+background: linear-gradient(92deg, #fff 70%, #8ffeeb 105%);
+background-clip: text;
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+cursor: pointer;
+transition: background 0.4s;
+}
+
+.event-title:hover {
+background: linear-gradient(120deg, #91fbff 22%, #fff 76%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+}
+
+.summary {
+font-size: 1rem;
+color: #ccc;
+margin-bottom: 1rem;
+white-space: pre-line;
+}
+
+.event-card:hover .summary {
+color: #c7fff4;
+}
+
+.expand-button {
+margin-top: auto;
+margin-bottom: 0.5rem;
+background: transparent;
+border: 0;
+color: #76fff8;
+font-weight: bold;
+padding: 6px 14px;
+border-radius: 20px;
+cursor: pointer;
+box-shadow: 0 1.2px 6px #00e5ce44;
+transition: background 0.24s, box-shadow 0.24s, color 0.24s;
+}
+
+.expand-button:hover {
+background: #1b262a;
+color: #fff;
+box-shadow: 0 2px 12px #92ffe8cc;
+}
+
+.detail-panel {
+max-height: 0;
+opacity: 0;
+overflow: hidden;
+transition: max-height 0.5s, opacity 0.35s;
+}
+
+.detail-panel.open {
+opacity: 1;
+max-height: 800px;
+margin-top: 0.7em;
+}
+
+.detail-panel p {
+color: #d4d6d7;
+font-size: 1rem;
+margin: 0;
+white-space: pre-line;
+}
+</style>
+</head>
+<body>
+<header class="synth-header">
+<h1 class="synth-title" id="synthTitle">Newspaper Synthesizer</h1>
+<div class="timestamp">
+AI-powered multi-source news, updated <span id="dateDisplay"></span>
+</div>
+</header>
+
+<div class="centered">
+<div class="event-grid" id="eventGrid">
+<p style="color:#999">Loading news articles...</p>
+</div>
+</div>
+
+<script>
+// Reload on title click
+document.getElementById('synthTitle').onclick = () => location.reload();
+
+// Set timestamp
+document.getElementById('dateDisplay').innerText = new Date().toLocaleString('en-IN', {
+dateStyle: 'full', timeStyle: 'short', timeZone: 'Asia/Kolkata'
+});
+
+// Load JSON and build cards
+fetch('multi_source_event_synthesis.json')
+.then(response => response.json())
+.then(data => {
+const grid = document.getElementById('eventGrid');
+grid.innerHTML = '';
+
+data.forEach(event => {
+const card = document.createElement('div');
+card.className = 'event-card';
+
+const sources = event.sources.map((src, i) =>
+`<a href="${event.urls[i]}" target="_blank" class="source-chip">${src}</a>`
+).join('');
+
+const title = event.event_titles.split(' | ')[0];
+
+card.innerHTML = `
+<div class="source-tag-bar">${sources}</div>
+<div class="event-title">${title}</div>
+<div class="summary">${event.summary}</div>
+<button class="expand-button">Read More ▼</button>
+<div class="detail-panel">
+<p>${event.synthesized_article}</p>
+</div>
+`;
+
+// Toggle ONLY this card
+const expandBtn = card.querySelector('.expand-button');
+const detailPanel = card.querySelector('.detail-panel');
+
+expandBtn.addEventListener('click', () => {
+const isOpen = detailPanel.classList.toggle('open');
+card.classList.toggle('expanded', isOpen);
+expandBtn.textContent = isOpen ? 'Read Less ▲' : 'Read More ▼';
+});
+
+grid.appendChild(card);
+});
+})
+.catch(err => {
+console.error(err);
+document.getElementById('eventGrid').innerHTML =
+'<p style="color:red">⚠️ Failed to load JSON file. Ensure it’s in the correct location.</p>';
+});
+</script>
+</body>
+</html>
